@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Online 30-Power Chess</title>
+    <title>Online 30-Power Chess with Chat</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
@@ -86,6 +86,12 @@
             opacity: 0.4;
             cursor: not-allowed;
         }
+        .conn-status {
+            font-size: 11px;
+            color: #fbbf24;
+            text-align: center;
+            font-weight: bold;
+        }
         .player-section {
             width: 100%;
             max-width: 480px;
@@ -122,7 +128,6 @@
         .active-turn { color: #81b64c; font-size: 11px; font-weight: bold; }
         .check-text { color: #ef4444 !important; animation: blink 0.8s infinite alternate; }
         
-        /* Single Unlock Button Style */
         .unlock-power-btn {
             background-color: #312e2b;
             border: 1px solid #f59e0b;
@@ -132,10 +137,6 @@
             font-size: 11px;
             font-weight: bold;
             cursor: pointer;
-            transition: background 0.15s;
-        }
-        .unlock-power-btn:hover {
-            background-color: #3d3a35;
         }
 
         .power-drawer {
@@ -143,7 +144,7 @@
             padding: 3px;
             border-radius: 4px;
             border: 1px solid #383633;
-            display: none; /* အစပိုင်းမှာ ဖျောက်ထားပါမယ် */
+            display: none;
         }
         .power-grid {
             display: grid;
@@ -163,7 +164,6 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            transition: background 0.15s;
         }
         .power-btn:disabled { opacity: 0.22; cursor: not-allowed; }
         .power-btn.active-mode {
@@ -200,10 +200,10 @@
             align-items: center;
         }
         #board {
-            width: 94vw;
-            height: 94vw;
-            max-width: 370px;
-            max-height: 370px;
+            width: 90vw;
+            height: 90vw;
+            max-width: 350px;
+            max-height: 350px;
             display: grid;
             grid-template-columns: repeat(8, 12.5%);
             grid-template-rows: repeat(8, 12.5%);
@@ -229,10 +229,7 @@
         .in-check {
             background: radial-gradient(circle, #ff2a2a 0%, #b91c1c 80%) !important;
             box-shadow: inset 0 0 10px #7f1d1d;
-            animation: pulseRed 1s infinite alternate;
         }
-        @keyframes pulseRed { from { filter: brightness(1); } to { filter: brightness(1.3); } }
-
         .frozen { background-color: #38bdf8 !important; box-shadow: inset 0 0 8px #0284c7; }
         .frozen::before { content: '❄️'; position: absolute; top: 1px; right: 2px; font-size: 9px; z-index: 4; }
         
@@ -250,11 +247,42 @@
         .coord-rank { position: absolute; top: 1px; left: 2px; font-size: 7.5px; font-weight: bold; pointer-events: none; }
         .coord-file { position: absolute; bottom: 1px; right: 2px; font-size: 7.5px; font-weight: bold; pointer-events: none; }
         
+        /* Chat Box Styling */
+        .chat-container {
+            width: 100%;
+            max-width: 480px;
+            background-color: #22211e;
+            border: 1px solid #383633;
+            border-radius: 6px;
+            padding: 5px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .chat-messages {
+            height: 60px;
+            overflow-y: auto;
+            background: #1a1917;
+            border: 1px solid #312e2b;
+            border-radius: 4px;
+            padding: 4px;
+            font-size: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .chat-msg { word-break: break-all; }
+        .chat-msg span { font-weight: bold; color: #81b64c; }
+        .chat-input-row {
+            display: flex;
+            gap: 4px;
+        }
+
         .bottom-bar {
             width: 100%;
             max-width: 480px;
             background-color: #262522;
-            padding: 6px 12px;
+            padding: 5px 12px;
             display: flex;
             justify-content: space-around;
             border-top: 1px solid #383633;
@@ -323,7 +351,7 @@
 <body>
 
     <div class="top-bar">
-        <span>♟️ Online Chess</span>
+        <span>♟️ Online Chess with Chat</span>
         <span id="role-badge" style="font-size: 10px; color: #81b64c;">Local Mode</span>
     </div>
 
@@ -337,9 +365,9 @@
             <input type="text" id="join-room-id" class="online-input" placeholder="Paste Friend's Room ID...">
             <button class="online-btn" id="join-btn" onclick="joinRoom()">Join</button>
         </div>
+        <div id="conn-status" class="conn-status">ချိတ်ဆက်ရန် အသင့်ဖြစ်နေပါပြီ</div>
     </div>
 
-    <!-- Top Player Section -->
     <div class="player-section">
         <div class="player-bar">
             <div class="player-info">
@@ -360,7 +388,17 @@
         <div id="board"></div>
     </div>
 
-    <!-- Bottom Player Section -->
+    <!-- Chat Box Added Here -->
+    <div class="chat-container">
+        <div class="chat-messages" id="chat-messages">
+            <div style="color: #888; font-style: italic;">ချိတ်ဆက်ပြီးပါက ဤနေရာတွင် စကားပြောနိုင်ပါသည်...</div>
+        </div>
+        <div class="chat-input-row">
+            <input type="text" id="chat-input" class="online-input" placeholder="စာရေးရန်..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+            <button class="online-btn" onclick="sendChatMessage()">Send</button>
+        </div>
+    </div>
+
     <div class="player-section">
         <div class="power-drawer" id="bottom-drawer">
             <div class="power-grid" id="bottom-powers"></div>
@@ -382,7 +420,6 @@
         <button class="btn" onclick="alert(getGameStatus())"><span>☰</span>Status</button>
     </div>
 
-    <!-- Hidden Password Modal -->
     <div id="custom-modal">
         <div class="modal-content">
             <h3>🔒 Enter Password</h3>
@@ -458,15 +495,33 @@
 
         let pendingUnlockSide = null;
 
+        function setConnStatus(msg, color = '#fbbf24') {
+            const el = document.getElementById('conn-status');
+            el.textContent = msg;
+            el.style.color = color;
+        }
+
+        const peerConfig = {
+            config: {
+                'iceServers': [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' }
+                ]
+            }
+        };
+
         function createRoom() {
             if (peer) peer.destroy();
+            setConnStatus("Room ဖန်တီးနေပါသည်...");
             document.getElementById('create-btn').disabled = true;
 
             const shortId = 'CHESS-' + Math.random().toString(36).substring(2, 7).toUpperCase();
-            peer = new Peer(shortId);
+            peer = new Peer(shortId, peerConfig);
 
             peer.on('open', (id) => {
                 document.getElementById('my-room-id').value = id;
+                setConnStatus("Room အောင်မြင်စွာ ဖန်တီးပြီးပါပြီ။ ID ကို သူငယ်ချင်းဆီ ပေးပို့ပါ။", "#81b64c");
             });
 
             peer.on('connection', (connection) => {
@@ -475,34 +530,47 @@
                 isOnline = true;
                 setupConnectionHandlers();
                 document.getElementById('role-badge').textContent = "Online: White";
+                setConnStatus("🟢 ချိတ်ဆက်ပြီးပါပြီ! (သင်သည် White ဖြစ်သည်)", "#81b64c");
+                appendSystemChat("🟢 သူငယ်ချင်း ချိတ်ဆက်လာပါပြီ။ ပွဲစလို့ရပါပြီ!");
                 resetGame(false);
             });
 
             peer.on('error', (err) => {
+                setConnStatus("ချိတ်ဆက်မှု အမှား: " + err.type, "#ef4444");
                 document.getElementById('create-btn').disabled = false;
             });
         }
 
         function joinRoom() {
             const targetId = document.getElementById('join-room-id').value.trim();
-            if (!targetId) { alert("Please paste a Room ID first!"); return; }
+            if (!targetId) { alert("Room ID ထည့်ရန် လိုအပ်ပါသည်။"); return; }
 
             if (peer) peer.destroy();
+            setConnStatus("ချိတ်ဆက်နေသည်...");
             document.getElementById('join-btn').disabled = true;
 
-            peer = new Peer();
+            peer = new Peer(peerConfig);
             peer.on('open', () => {
-                conn = peer.connect(targetId);
+                conn = peer.connect(targetId, { reliable: true });
+                
                 conn.on('open', () => {
                     myColor = 'b';
                     isOnline = true;
                     setupConnectionHandlers();
                     document.getElementById('role-badge').textContent = "Online: Black";
+                    setConnStatus("🟢 ချိတ်ဆက်ပြီးပါပြီ! (သင်သည် Black ဖြစ်သည်)", "#81b64c");
+                    appendSystemChat("🟢 အခန်းထဲသို့ အောင်မြင်စွာ ဝင်ရောက်ပြီးပါပြီ။");
                     resetGame(false);
+                });
+
+                conn.on('error', (err) => {
+                    setConnStatus("ချိတ်ဆက်၍ မရပါ: " + err, "#ef4444");
+                    document.getElementById('join-btn').disabled = false;
                 });
             });
 
             peer.on('error', (err) => {
+                setConnStatus("ချိတ်ဆက်မှု အမှား: " + err.type, "#ef4444");
                 document.getElementById('join-btn').disabled = false;
             });
         }
@@ -528,14 +596,18 @@
                     checkGameOverState();
                 } else if (data.type === 'RESET') {
                     resetGame(false);
-                    showBanner("Opponent restarted the game!");
+                    showBanner("သူငယ်ချင်းက ပွဲကို အစက ပြန်စလိုက်ပါပြီ!");
                     setTimeout(hideBanner, 2000);
+                } else if (data.type === 'CHAT') {
+                    appendChatMsg("Opponent", data.message);
                 }
             });
 
             conn.on('close', () => {
                 isOnline = false;
                 myColor = null;
+                setConnStatus("🔴 သူငယ်ချင်း အဆက်အသွယ် ပြတ်သွားပါပြီ။", "#ef4444");
+                appendSystemChat("🔴 အဆက်အသွယ် ပြတ်တောက်သွားပါပြီ။");
                 document.getElementById('role-badge').textContent = "Disconnected";
             });
         }
@@ -555,11 +627,48 @@
             }
         }
 
+        function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            appendChatMsg("You", text);
+            if (isOnline && conn && conn.open) {
+                conn.send({ type: 'CHAT', message: text });
+            }
+            input.value = '';
+        }
+
+        function appendChatMsg(sender, msg) {
+            const box = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            div.className = 'chat-msg';
+            div.innerHTML = `<span>${sender}:</span> ${escapeHtml(msg)}`;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function appendSystemChat(msg) {
+            const box = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            div.className = 'chat-msg';
+            div.style.color = '#fbbf24';
+            div.style.fontStyle = 'italic';
+            div.textContent = msg;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
         function copyRoomId() {
             const input = document.getElementById('my-room-id');
             if (!input.value) return;
             input.select();
             navigator.clipboard.writeText(input.value);
+            setConnStatus("Room ID ကူးယူပြီးပါပြီ။", "#81b64c");
         }
 
         function setupPlayerPanels() {
@@ -572,7 +681,6 @@
             document.getElementById('bottom-avatar').textContent = bottomColor === 'w' ? '♙' : '♟';
             document.getElementById('bottom-name').textContent = bottomColor === 'w' ? 'You (White)' : 'You (Black)';
 
-            // Hide opponent's unlock button in online mode
             if (isOnline) {
                 document.getElementById('top-unlock-btn').style.display = 'none';
                 document.getElementById('bottom-unlock-btn').style.display = powersUnlocked[bottomColor] ? 'none' : 'inline-block';
@@ -627,7 +735,7 @@
                     updatePowerButtons();
                     pendingUnlockSide = null;
                 } else {
-                    alert("❌ Incorrect Password!");
+                    alert("❌ Password မှားယွင်းနေပါသည်။");
                 }
             } else {
                 modal.style.display = 'none';
@@ -645,7 +753,7 @@
         function hideBanner() {
             if (game.in_check()) {
                 const victim = game.turn() === 'w' ? 'White' : 'Black';
-                showBanner(`⚠️ CHECK! ${victim} King is under attack!`, true);
+                showBanner(`⚠️ CHECK! ${victim} King ကို တိုက်ခိုက်ခံနေရသည်!`, true);
                 return;
             }
             bannerEl.classList.remove('banner-danger');
@@ -660,40 +768,40 @@
             cancelPower();
 
             if (type === 'double') {
-                if (game.in_check()) { alert("Cannot use while in Check!"); return; }
+                if (game.in_check()) { alert("Check ဖြစ်နေစဉ် 2x သုံးမရပါ!"); return; }
                 powersUsed[player].double = true;
                 doubleMoveActive = true;
-                showBanner("⚡ 2x MOVE ACTIVE: Make 2 moves in a row!");
+                showBanner("⚡ 2x MOVE အလုပ်လုပ်နေသည်: အလှည့် ၂ ကြိမ်ဆက်ကစားနိုင်သည်!");
                 updatePowerButtons();
             } else if (type === 'freeze') {
                 activePowerMode = 'freeze';
                 document.getElementById(`${player}-freeze`).classList.add('active-mode');
-                showBanner("🛡️ FREEZE: Tap an enemy piece to freeze");
+                showBanner("🛡️ FREEZE: ရန်သူ့တုံးတစ်တုံးကို နှိပ်၍ ရပ်တန့်ပါ");
                 renderBoard();
             } else if (type === 'promote') {
                 activePowerMode = 'promote';
                 document.getElementById(`${player}-promote`).classList.add('active-mode');
-                showBanner("✨ UPGRADE: Tap your Pawn to turn into Knight");
+                showBanner("✨ UPGRADE: သင့်ရဲ့ ရဲဘော်ကို Knight သို့ ပြောင်းပါ");
                 renderBoard();
             } else if (type === 'bomb') {
                 activePowerMode = 'bomb';
                 document.getElementById(`${player}-bomb`).classList.add('active-mode');
-                showBanner("💥 BOMB: Tap an enemy piece to destroy");
+                showBanner("💥 BOMB: ရန်သူ့တုံးတစ်တုံးကို ဖျက်ဆီးပါ");
                 renderBoard();
             } else if (type === 'swap') {
                 activePowerMode = 'swap1';
                 document.getElementById(`${player}-swap`).classList.add('active-mode');
-                showBanner("🪞 SWAP: Tap one of your pieces first");
+                showBanner("🪞 SWAP: သင့်ရဲ့ တုံးတစ်တုံးကို အရင်ရွေးပါ");
                 renderBoard();
             } else if (type === 'teleport') {
                 activePowerMode = 'teleport1';
                 document.getElementById(`${player}-teleport`).classList.add('active-mode');
-                showBanner("🏰 TELEPORT: Tap your piece to move anywhere");
+                showBanner("🏰 TELEPORT: သင့်တုံးကို နေရာရွှေ့ပါ");
                 renderBoard();
             } else if (type === 'shield') {
                 powersUsed[player].shield = true;
                 shieldActive[player] = true;
-                showBanner("♻️ SHIELD ACTIVE!");
+                showBanner("♻️ SHIELD အသက်ဝင်နေပြီ!");
                 updatePowerButtons();
                 broadcastState();
             } else if (type === 'vision') {
@@ -701,44 +809,44 @@
                 const moves = game.moves({verbose: true});
                 if (moves.length > 0) {
                     const r = moves[Math.floor(Math.random() * moves.length)];
-                    showBanner(`👁️ HINT: Try moving from ${r.from} to ${r.to}`);
+                    showBanner(`👁️ HINT: ${r.from} မှ ${r.to} သို့ ရွှေ့ကြည့်ပါ`);
                 }
                 updatePowerButtons();
                 broadcastState();
             } else if (type === 'revival') {
                 activePowerMode = 'revival';
                 document.getElementById(`${player}-revival`).classList.add('active-mode');
-                showBanner("🔄 REVIVE: Tap an empty square to summon Pawn");
+                showBanner("🔄 REVIVE: အကွက်လပ်တစ်ခုတွင် ရဲဘော်အသစ် ပေါ်စေရန် နှိပ်ပါ");
                 renderBoard();
             } else if (type === 'dash') {
                 activePowerMode = 'dash1';
                 document.getElementById(`${player}-dash`).classList.add('active-mode');
-                showBanner("💨 DASH: Tap your piece to jump");
+                showBanner("💨 DASH: သင့်တုံးကို ရွေးပါ");
                 renderBoard();
             } else if (type === 'fireball') {
                 activePowerMode = 'fireball';
                 document.getElementById(`${player}-fireball`).classList.add('active-mode');
-                showBanner("🔥 FIRE: Tap an empty square to burn");
+                showBanner("🔥 FIRE: မီးရှို့မည့် အကွက်လပ်ကို နှိပ်ပါ");
                 renderBoard();
             } else if (type === 'queen') {
                 activePowerMode = 'queen';
                 document.getElementById(`${player}-queen`).classList.add('active-mode');
-                showBanner("👑 QUEEN: Tap your Pawn to upgrade into Queen");
+                showBanner("👑 QUEEN: သင့်ရဲဘော်ကို Queen အဖြစ် မြှင့်တင်ပါ");
                 renderBoard();
             } else if (type === 'magnet') {
                 activePowerMode = 'magnet1';
                 document.getElementById(`${player}-magnet`).classList.add('active-mode');
-                showBanner("🧲 MAGNET: Tap an enemy piece to pull");
+                showBanner("🧲 MAGNET: ဆွဲယူမည့် ရန်သူ့တုံးကို နှိပ်ပါ");
                 renderBoard();
             } else if (type === 'sniper') {
                 activePowerMode = 'sniper';
                 document.getElementById(`${player}-sniper`).classList.add('active-mode');
-                showBanner("🎯 SNIPER: Tap any enemy piece to eliminate");
+                showBanner("🎯 SNIPER: ဖျက်ဆီးမည့် ရန်သူ့တုံးကို နှိပ်ပါ");
                 renderBoard();
             } else if (type === 'godmode') {
                 powersUsed[player].godmode = true;
                 godModeActive[player] = true;
-                showBanner("🌟 GOD MODE ACTIVE!");
+                showBanner("🌟 GOD MODE အသက်ဝင်နေပြီ!");
                 updatePowerButtons();
                 broadcastState();
             }
@@ -907,7 +1015,7 @@
                 if (clickedPiece && clickedPiece.color === currentTurn) {
                     swapSource = square;
                     activePowerMode = 'swap2';
-                    showBanner("🪞 SWAP: Now tap an enemy piece");
+                    showBanner("🪞 SWAP: ရန်သူ့တုံးကို ဆက်လက်ရွေးပါ");
                     renderBoard();
                 }
                 return;
@@ -934,7 +1042,7 @@
                 if (clickedPiece && clickedPiece.color === currentTurn) {
                     teleportSource = square;
                     activePowerMode = 'teleport2';
-                    showBanner("🏰 TELEPORT: Tap any empty square");
+                    showBanner("🏰 TELEPORT: အကွက်လပ်တစ်ခုကို နှိပ်ပါ");
                     renderBoard();
                 }
                 return;
@@ -971,7 +1079,7 @@
                 if (clickedPiece && clickedPiece.color === currentTurn) {
                     dashSource = square;
                     activePowerMode = 'dash2';
-                    showBanner("💨 DASH: Tap an empty square");
+                    showBanner("💨 DASH: အကွက်လပ်ကို နှိပ်ပါ");
                     renderBoard();
                 }
                 return;
@@ -1008,7 +1116,7 @@
                 if (clickedPiece && clickedPiece.color !== currentTurn && clickedPiece.type !== 'k') {
                     magnetSource = square;
                     activePowerMode = 'magnet2';
-                    showBanner("🧲 MAGNET: Tap an empty square");
+                    showBanner("🧲 MAGNET: အကွက်လပ်တစ်ခုကို နှိပ်ပါ");
                     renderBoard();
                 }
                 return;
@@ -1031,12 +1139,12 @@
             const targetValid = validMoves.find(m => m.to === square);
             if (selectedSquare && targetValid) {
                 if (fireSquares.includes(square)) {
-                    alert("That square is blocked by Fire!");
+                    alert("ဤအကွက်တွင် မီးလောင်နေပါသည်!");
                     return;
                 }
                 const targetPiece = game.get(square);
                 if (targetPiece && targetPiece.type === 'k') {
-                    alert("You cannot capture the King!");
+                    alert("King ကို သွားစား၍ မရပါ။");
                     return;
                 }
 
@@ -1051,7 +1159,7 @@
                         hideBanner();
                         if (!game.in_check() && !game.game_over()) {
                             swapTurnManually();
-                            showBanner("⚡ 2nd Move! Go again.");
+                            showBanner("⚡ ဒုတိယအလှည့်! ဆက်ကစားပါ။");
                             setTimeout(hideBanner, 1500);
                         }
                     } else {
@@ -1073,7 +1181,7 @@
 
             if (clickedPiece && clickedPiece.color === currentTurn) {
                 if (square === frozenSquare) {
-                    showBanner("❄️ This piece is FROZEN!");
+                    showBanner("❄️ ဤတုံးသည် ရပ်တန့် (Freeze) ခံထားရသည်!");
                     setTimeout(hideBanner, 1500);
                     return;
                 }
@@ -1095,7 +1203,7 @@
                 const turn = game.turn();
                 if (godModeActive[turn]) {
                     godModeActive[turn] = false;
-                    showBanner("🌟 GOD MODE PROTECTED YOU!", true);
+                    showBanner("🌟 GOD MODE က ကာကွယ်ပေးလိုက်သည်!", true);
                     game.undo();
                     renderBoard();
                     broadcastState();
@@ -1103,13 +1211,13 @@
                 }
                 if (shieldActive[turn]) {
                     shieldActive[turn] = false;
-                    showBanner("♻️ SHIELD SAVED YOU!", true);
+                    showBanner("♻️ SHIELD က ကာကွယ်ပေးလိုက်သည်!", true);
                     game.undo();
                     renderBoard();
                     broadcastState();
                 } else {
                     const winner = turn === 'w' ? 'Black' : 'White';
-                    showBanner(`👑 CHECKMATE! ${winner} Wins!`, true);
+                    showBanner(`👑 CHECKMATE! ${winner} အနိုင်ရရှိသွားပါပြီ!`, true);
                     setTimeout(() => alert(`Game Over! ${winner} wins by Checkmate!`), 200);
                 }
             }
@@ -1117,7 +1225,7 @@
 
         function undoMove() {
             if (isOnline) return;
-            if (undoLimit <= 0) { alert("Maximum 10 undos reached!"); return; }
+            if (undoLimit <= 0) { alert("Undo အကြိမ်ရေ ကုန်ဆုံးသွားပါပြီ!"); return; }
             const undone = game.undo();
             if (undone) {
                 undoLimit--;
